@@ -87,6 +87,7 @@ function getModelConfig(p: SessionProvider) {
   if (p === "claude") return CLAUDE_MODELS;
   if (p === "codex") return CODEX_MODELS;
   if (p === "gemini") return GEMINI_MODELS;
+  if (p === "geel") return CLAUDE_MODELS; // Geel routes to Claude Max under the hood
   return CURSOR_MODELS;
 }
 
@@ -100,6 +101,7 @@ function getModelValue(
   if (p === "claude") return c;
   if (p === "codex") return co;
   if (p === "gemini") return g;
+  if (p === "geel") return c; // Geel uses Claude model selection
   return cu;
 }
 
@@ -134,7 +136,8 @@ export default function ProviderSelectionEmptyState({
   };
 
   const handleModelChange = (value: string) => {
-    if (provider === "claude") {
+    if (provider === "claude" || provider === "geel") {
+      // Geel and Claude share the claudeModel setting (both route to Claude Max)
       setClaudeModel(value);
       localStorage.setItem("claude-model", value);
     } else if (provider === "codex") {
