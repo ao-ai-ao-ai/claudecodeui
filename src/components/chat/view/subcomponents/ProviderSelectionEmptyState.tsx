@@ -73,6 +73,14 @@ const PROVIDERS: ProviderDef[] = [
     ring: "ring-blue-500/15",
     check: "bg-blue-500 text-white",
   },
+  {
+    id: "geel",
+    name: "Geel",
+    infoKey: "providerSelection.providerInfo.geel",
+    accent: "border-orange-500 dark:border-orange-400",
+    ring: "ring-orange-500/15",
+    check: "bg-orange-500 text-white",
+  },
 ];
 
 function getModelConfig(p: SessionProvider) {
@@ -250,6 +258,9 @@ export default function ProviderSelectionEmptyState({
                   }),
                   gemini: t("providerSelection.readyPrompt.gemini", {
                     model: geminiModel,
+                  }),
+                  geel: t("providerSelection.readyPrompt.geel", {
+                    defaultValue: "Ready via nerve-center Conductor (Claude Max)",
                   }),
                 }[provider]
               }

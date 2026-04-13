@@ -638,6 +638,22 @@ export function useChatComposerState({
             toolsSettings,
           },
         });
+      } else if (provider === 'geel') {
+        // Geel = forward to nerve-center Conductor WS (Claude Max via CLI)
+        sendMessage({
+          type: 'geel-command',
+          command: messageContent,
+          sessionId: effectiveSessionId,
+          options: {
+            cwd: resolvedProjectPath,
+            projectPath: resolvedProjectPath,
+            projectSlug: selectedProject.name,
+            sessionId: effectiveSessionId,
+            resume: Boolean(effectiveSessionId),
+            mode: permissionMode === 'plan' ? 'plan' : 'build',
+            sessionSummary,
+          },
+        });
       } else {
         sendMessage({
           type: 'claude-command',
