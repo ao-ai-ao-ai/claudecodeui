@@ -37,9 +37,15 @@ export async function queryGeel(command, options = {}, writer) {
   const sessionId = options.sessionId || `geel-${Date.now()}`;
   writer.setSessionId(sessionId);
 
-  const url = slug
-    ? `${NERVE_CENTER_WS}?projectSlug=${encodeURIComponent(slug)}`
-    : NERVE_CENTER_WS;
+  // Prefer verbatim projectPath as cwd — siteboon's slug is the sanitized
+  // directory name (e.g. "-home-ubuntu-ai-os-projects-opulent-arrival"),
+  // not a usable slug. Nerve-center server.js:13781 honors `cwd` param
+  // override; fall back to projectSlug only when no path is given.
+  const cwd = options.projectPath || null;
+  const qs = new URLSearchParams();
+  if (cwd) qs.set('cwd', cwd);
+  if (slug) qs.set('projectSlug', slug);
+  const url = qs.toString() ? `${NERVE_CENTER_WS}?${qs}` : NERVE_CENTER_WS;
 
   // Reuse upstream if already connected for this writer/session
   let entry = activeSessions.get(sessionId);
