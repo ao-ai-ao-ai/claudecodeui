@@ -13,6 +13,7 @@
  */
 
 import WebSocket from 'ws';
+import { randomUUID } from 'node:crypto';
 import { geelAdapter } from './providers/geel/adapter.js';
 
 const NERVE_CENTER_WS =
@@ -34,8 +35,24 @@ const activeSessions = new Map();
 export async function queryGeel(command, options = {}, writer) {
   const slug = options.projectSlug
     || (options.projectPath ? options.projectPath.split('/').pop() : null);
-  const sessionId = options.sessionId || `geel-${Date.now()}`;
+  const freshSession = !options.sessionId;
+  const sessionId = options.sessionId || randomUUID();
   writer.setSessionId(sessionId);
+
+  // Emit a synthetic session_created when we minted the ID ourselves.
+  // The UI's useChatRealtimeHandlers `session_created` handler promotes
+  // the URL to /session/<uuid> — without this, first-send-from-root leaves
+  // the user stranded at / with an orphan bubble (P1-N2-verify item 3).
+  if (freshSession) {
+    writer.send({
+      id: `session_created_${Date.now()}`,
+      sessionId,
+      timestamp: new Date().toISOString(),
+      provider: 'geel',
+      kind: 'session_created',
+      newSessionId: sessionId,
+    });
+  }
 
   // Prefer verbatim projectPath as cwd — siteboon's slug is the sanitized
   // directory name (e.g. "-home-ubuntu-ai-os-projects-opulent-arrival"),
