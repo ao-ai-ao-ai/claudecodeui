@@ -54,13 +54,17 @@ export async function queryGeel(command, options = {}, writer) {
     activeSessions.set(sessionId, entry);
   }
 
-  // Send the user message down the Conductor wire
+  // Send the user message down the Conductor wire.
+  // DO NOT include projectSlug here — nerve-center's WS handler
+  // (server.js:13802) rebuilds cwd from slug as $HOME/projects/<slug>,
+  // which clobbers the cwd we set at the URL level on open. The session's
+  // cwd is already correct from the initial upgrade; slug-on-message
+  // would re-route to the wrong path.
   entry.upstream.send(JSON.stringify({
     type: 'message',
     content: command,
     mode: options.mode || 'build',
     brain: options.brain || 'auto',
-    projectSlug: slug || null,
   }));
 }
 
