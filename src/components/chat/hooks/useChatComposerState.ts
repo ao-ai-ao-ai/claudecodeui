@@ -143,7 +143,10 @@ export function useChatComposerState({
   const [uploadingImages, setUploadingImages] = useState<Map<string, number>>(new Map());
   const [imageErrors, setImageErrors] = useState<Map<string, string>>(new Map());
   const [isTextareaExpanded, setIsTextareaExpanded] = useState(false);
-  const [thinkingMode, setThinkingMode] = useState('none');
+  const [thinkingMode, setThinkingMode] = useState<string>(() => {
+    // Geel defaults to thinking mode enabled; other providers default to 'none'
+    return provider === 'geel' ? 'think' : 'none';
+  });
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inputHighlightRef = useRef<HTMLDivElement>(null);

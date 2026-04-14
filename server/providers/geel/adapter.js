@@ -90,6 +90,16 @@ export function normalizeMessage(raw, sessionId) {
         ...base, timestamp: ts, kind: 'complete',
       })];
 
+    case 'result':
+      // Final result with cost, duration, and model info
+      return [createNormalizedMessage({
+        ...base, timestamp: ts, kind: 'status',
+        text: `${raw.model || 'Claude'} · ${raw.duration ? `${raw.duration}ms` : ''} · $${raw.cost ? raw.cost.toFixed(4) : '0'}`,
+        costUsd: raw.cost,
+        duration: raw.duration,
+        model: raw.model,
+      })];
+
     case 'rate_limit':
       return [createNormalizedMessage({
         ...base, timestamp: ts, kind: 'status',

@@ -38,9 +38,13 @@ type ProviderDef = {
   accent: string;
   ring: string;
   check: string;
+  subtitle?: string;
 };
 
-const PROVIDERS: ProviderDef[] = [
+// Feature flag: when true, use Geel exclusively and hide other providers
+const SOLO_PROVIDER_MODE = true;
+
+const ALL_PROVIDERS: ProviderDef[] = [
   {
     id: "claude",
     name: "Claude Code",
@@ -80,6 +84,7 @@ const PROVIDERS: ProviderDef[] = [
     accent: "border-orange-500 dark:border-orange-400",
     ring: "ring-orange-500/15",
     check: "bg-orange-500 text-white",
+    subtitle: "Claude Max via nerve-center, $0 marginal",
   },
 ];
 
@@ -129,6 +134,13 @@ export default function ProviderSelectionEmptyState({
     defaultValue: "Start the next task",
   });
 
+  // Auto-select Geel on first render if no provider is set and SOLO_PROVIDER_MODE is on
+  React.useEffect(() => {
+    if (SOLO_PROVIDER_MODE && !provider && !selectedSession && !currentSessionId) {
+      setProvider("geel");
+    }
+  }, []);
+
   const selectProvider = (next: SessionProvider) => {
     setProvider(next);
     localStorage.setItem("selected-provider", next);
@@ -169,16 +181,16 @@ export default function ProviderSelectionEmptyState({
           {/* Heading */}
           <div className="mb-8 text-center">
             <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-              {t("providerSelection.title")}
+              {SOLO_PROVIDER_MODE ? "Ready when you are" : t("providerSelection.title")}
             </h2>
             <p className="mt-1 text-[13px] text-muted-foreground">
-              {t("providerSelection.description")}
+              {SOLO_PROVIDER_MODE ? "Powered by Geel" : t("providerSelection.description")}
             </p>
           </div>
 
           {/* Provider cards — horizontal row, equal width */}
           <div className="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-2.5">
-            {PROVIDERS.map((p) => {
+            {(SOLO_PROVIDER_MODE ? ALL_PROVIDERS.filter(p => p.id === 'geel') : ALL_PROVIDERS).map((p) => {
               const active = provider === p.id;
               return (
                 <button
@@ -204,7 +216,7 @@ export default function ProviderSelectionEmptyState({
                       {p.name}
                     </p>
                     <p className="mt-1 text-[10px] leading-tight text-muted-foreground">
-                      {t(p.infoKey)}
+                      {p.subtitle || t(p.infoKey)}
                     </p>
                   </div>
                   {/* Check badge */}

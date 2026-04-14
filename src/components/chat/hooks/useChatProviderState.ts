@@ -18,7 +18,11 @@ export function useChatProviderState({ selectedSession }: UseChatProviderStateAr
     return localStorage.getItem('cursor-model') || CURSOR_MODELS.DEFAULT;
   });
   const [claudeModel, setClaudeModel] = useState<string>(() => {
-    return localStorage.getItem('claude-model') || CLAUDE_MODELS.DEFAULT;
+    // Geel defaults to Opus 4.6; other Claude providers use standard default
+    const stored = localStorage.getItem('claude-model');
+    if (stored) return stored;
+    const defaultProvider = localStorage.getItem('selected-provider');
+    return defaultProvider === 'geel' ? 'opus-4.6' : CLAUDE_MODELS.DEFAULT;
   });
   const [codexModel, setCodexModel] = useState<string>(() => {
     return localStorage.getItem('codex-model') || CODEX_MODELS.DEFAULT;

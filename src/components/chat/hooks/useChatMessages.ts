@@ -159,15 +159,28 @@ export function normalizedToChatMessages(messages: NormalizedMessage[]): ChatMes
         }
         break;
 
-      // stream_end, complete, status, permission_*, session_created
-      // are control events — not rendered as messages
+      // stream_end, complete, permission_*, session_created are control events
       case 'stream_end':
       case 'complete':
-      case 'status':
       case 'permission_request':
       case 'permission_cancelled':
       case 'session_created':
         // Skip — these are handled by useChatRealtimeHandlers
+        break;
+
+      // status — may include cost/duration data for Geel provider
+      case 'status':
+        if (msg.costUsd !== undefined || msg.duration !== undefined) {
+          converted.push({
+            type: 'assistant',
+            content: msg.text || '',
+            timestamp: msg.timestamp,
+            cost: msg.costUsd,
+            duration: msg.duration,
+            model: msg.model,
+            isCostInfo: true,
+          });
+        }
         break;
 
       // tool_result is handled via attachment to tool_use above
