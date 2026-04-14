@@ -11,7 +11,7 @@ export function CostChip({ cost, duration, model = 'Claude' }: CostChipProps) {
     return null;
   }
 
-  const costDisplay = cost === 0 || cost === null ? null : `$${cost.toFixed(4)}`;
+  const costDisplay = cost == null || cost === 0 ? null : `$${cost.toFixed(4)}`;
 
   return (
     <div className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-green-500 to-green-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm">

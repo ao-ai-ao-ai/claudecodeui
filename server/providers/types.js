@@ -41,7 +41,7 @@
  * - stream_end:           (no extra fields)
  * - error:                content
  * - complete:             (no extra fields)
- * - status:               text, tokens?, canInterrupt?
+ * - status:               text, tokens?, canInterrupt?, costUsd?, duration?, model?
  * - permission_request:   requestId, toolName, input, context?
  * - permission_cancelled: requestId
  * - session_created:      newSessionId

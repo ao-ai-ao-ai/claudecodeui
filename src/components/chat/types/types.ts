@@ -46,6 +46,11 @@ export interface ChatMessage {
     currentToolIndex: number;
     isComplete: boolean;
   };
+  // Geel cost-info turn (emitted by normalizedToChatMessages on `status` kind)
+  cost?: number;
+  duration?: number;
+  model?: string;
+  isCostInfo?: boolean;
   [key: string]: unknown;
 }
 

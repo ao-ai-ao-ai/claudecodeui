@@ -56,6 +56,10 @@ export interface NormalizedMessage {
   status?: string;
   summary?: string;
   exitCode?: number;
+  // Geel provider: emitted on `status` kind from Conductor `result` event
+  costUsd?: number;
+  duration?: number;
+  model?: string;
   actualSessionId?: string;
   parentToolUseId?: string;
   subagentTools?: unknown[];
