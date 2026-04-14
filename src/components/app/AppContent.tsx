@@ -179,6 +179,7 @@ export default function AppContent() {
           onNavigateToSession={(targetSessionId: string) => navigate(`/session/${targetSessionId}`)}
           onShowSettings={() => setShowSettings(true)}
           externalMessageUpdate={externalMessageUpdate}
+          isConnected={isConnected}
         />
       </div>
 

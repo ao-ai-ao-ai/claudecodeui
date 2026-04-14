@@ -48,6 +48,7 @@ function MainContent({
   onNavigateToSession,
   onShowSettings,
   externalMessageUpdate,
+  isConnected = true,
 }: MainContentProps) {
   const { preferences } = useUiPreferences();
   const { autoExpandTools, showRawParameters, showThinking, autoScrollToBottom, sendByCtrlEnter } = preferences;
@@ -105,6 +106,7 @@ function MainContent({
         shouldShowTasksTab={shouldShowTasksTab}
         isMobile={isMobile}
         onMenuClick={onMenuClick}
+        isConnected={isConnected}
       />
 
       <div className="flex min-h-0 flex-1 overflow-hidden">

@@ -53,6 +53,7 @@ export type MainContentProps = {
   onNavigateToSession: (targetSessionId: string) => void;
   onShowSettings: () => void;
   externalMessageUpdate: number;
+  isConnected?: boolean;
 };
 
 export type MainContentHeaderProps = {
@@ -63,6 +64,7 @@ export type MainContentHeaderProps = {
   shouldShowTasksTab: boolean;
   isMobile: boolean;
   onMenuClick: () => void;
+  isConnected?: boolean;
 };
 
 export type MainContentStateViewProps = {

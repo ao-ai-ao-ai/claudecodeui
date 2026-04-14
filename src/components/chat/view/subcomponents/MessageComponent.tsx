@@ -13,6 +13,9 @@ import type { Project } from '../../../../types/app';
 import { ToolRenderer, shouldHideToolResult } from '../../tools';
 import { Markdown } from './Markdown';
 import MessageCopyControl from './MessageCopyControl';
+import { CostChip } from './CostChip';
+import { ReasoningBlock } from './ReasoningBlock';
+import { ActionBlock } from './ActionBlock';
 
 type DiffLine = {
   type: string;
@@ -183,6 +186,23 @@ const MessageComponent = memo(({ message, prevMessage, createDiff, onFileOpen, o
 
             {message.isToolUse ? (
               <>
+                {/* Geel-style action blocks */}
+                {provider === 'geel' && message.toolName && (
+                  <ActionBlock
+                    toolName={message.toolName}
+                    toolId={message.toolId || ''}
+                    toolInput={message.toolInput}
+                    status={
+                      message.toolResult
+                        ? message.toolResult.isError
+                          ? 'error'
+                          : 'completed'
+                        : 'running'
+                    }
+                    result={message.toolResult?.content}
+                  />
+                )}
+
                 <div className="flex flex-col">
                   <div className="flex flex-col">
                     <Markdown className="prose prose-sm max-w-none dark:prose-invert">
@@ -398,16 +418,7 @@ const MessageComponent = memo(({ message, prevMessage, createDiff, onFileOpen, o
               <div className="text-sm text-gray-700 dark:text-gray-300">
                 {/* Thinking accordion for reasoning */}
                 {showThinking && message.reasoning && (
-                  <details className="mb-3">
-                    <summary className="cursor-pointer font-medium text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200">
-                      {t('thinking.emoji')}
-                    </summary>
-                    <div className="mt-2 border-l-2 border-gray-300 pl-4 text-sm italic text-gray-600 dark:border-gray-600 dark:text-gray-400">
-                      <div className="whitespace-pre-wrap">
-                        {message.reasoning}
-                      </div>
-                    </div>
-                  </details>
+                  <ReasoningBlock thinking={message.reasoning} />
                 )}
 
                 {(() => {
@@ -457,8 +468,15 @@ const MessageComponent = memo(({ message, prevMessage, createDiff, onFileOpen, o
               </div>
             )}
 
-            {(shouldShowAssistantCopyControl || !isGrouped) && (
-              <div className="mt-1 flex w-full items-center gap-2 text-[11px] text-gray-400 dark:text-gray-500">
+            {(shouldShowAssistantCopyControl || !isGrouped || message.cost) && (
+              <div className="mt-2 flex w-full items-center gap-2 text-[11px] text-gray-400 dark:text-gray-500">
+                {message.cost !== undefined && (
+                  <CostChip
+                    cost={message.cost}
+                    duration={message.duration}
+                    model={message.model || 'Claude'}
+                  />
+                )}
                 {shouldShowAssistantCopyControl && (
                   <MessageCopyControl content={assistantCopyContent} messageType="assistant" />
                 )}

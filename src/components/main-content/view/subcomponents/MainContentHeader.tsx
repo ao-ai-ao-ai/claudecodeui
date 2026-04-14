@@ -3,6 +3,7 @@ import type { MainContentHeaderProps } from '../../types/types';
 import MobileMenuButton from './MobileMenuButton';
 import MainContentTabSwitcher from './MainContentTabSwitcher';
 import MainContentTitle from './MainContentTitle';
+import { HeartbeatDot } from '../../../chat/view/subcomponents/HeartbeatDot';
 
 export default function MainContentHeader({
   activeTab,
@@ -12,6 +13,7 @@ export default function MainContentHeader({
   shouldShowTasksTab,
   isMobile,
   onMenuClick,
+  isConnected = true,
 }: MainContentHeaderProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -44,6 +46,7 @@ export default function MainContentHeader({
             selectedSession={selectedSession}
             shouldShowTasksTab={shouldShowTasksTab}
           />
+          <HeartbeatDot isConnected={isConnected} />
         </div>
 
         <div className="relative min-w-0 flex-shrink overflow-hidden sm:flex-shrink-0">
