@@ -407,6 +407,42 @@ export function useSessionStore() {
   }, [notify]);
 
   /**
+   * Migrate all slot data from one session ID to another (session remap).
+   * Used when Conductor assigns a real CLI session ID that differs from the
+   * locally-minted UUID. Moves messages, updates activeSessionId pointer,
+   * and triggers a re-render for the new session.
+   */
+  const migrateSession = useCallback((fromId: string, toId: string) => {
+    const store = storeRef.current;
+    const fromSlot = store.get(fromId);
+    if (!fromSlot || fromId === toId) return;
+
+    const remap = (msgs: NormalizedMessage[]) =>
+      msgs.map(m => ({ ...m, sessionId: toId }));
+
+    const toSlot = getSlot(toId);
+    // Prepend migrated messages before any that already exist under toId
+    toSlot.serverMessages = [...remap(fromSlot.serverMessages), ...toSlot.serverMessages];
+    toSlot.realtimeMessages = [...remap(fromSlot.realtimeMessages), ...toSlot.realtimeMessages];
+    toSlot.status = fromSlot.status;
+    toSlot.fetchedAt = fromSlot.fetchedAt;
+    toSlot.total = fromSlot.total + toSlot.total;
+    toSlot.tokenUsage = fromSlot.tokenUsage || toSlot.tokenUsage;
+
+    store.delete(fromId);
+    // Reset cache refs so computeMerged runs on next access
+    toSlot._lastServerRef = EMPTY;
+    toSlot._lastRealtimeRef = EMPTY;
+    recomputeMergedIfNeeded(toSlot);
+
+    // Move the active-session pointer so notify() fires for the new ID
+    if (activeSessionIdRef.current === fromId) {
+      activeSessionIdRef.current = toId;
+    }
+    notify(toId);
+  }, [getSlot, notify]);
+
+  /**
    * Clear realtime messages for a session (e.g., after stream completes and server fetch catches up).
    */
   const clearRealtime = useCallback((sessionId: string) => {
@@ -446,13 +482,14 @@ export function useSessionStore() {
     updateStreaming,
     finalizeStreaming,
     clearRealtime,
+    migrateSession,
     getMessages,
     getSessionSlot,
   }), [
     getSlot, has, fetchFromServer, fetchMore,
     appendRealtime, appendRealtimeBatch, refreshFromServer,
     setActiveSession, setStatus, isStale, updateStreaming, finalizeStreaming,
-    clearRealtime, getMessages, getSessionSlot,
+    clearRealtime, migrateSession, getMessages, getSessionSlot,
   ]);
 }
 

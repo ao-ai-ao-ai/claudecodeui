@@ -21,6 +21,28 @@ import { createNormalizedMessage, generateMessageId } from '../types.js';
 const PROVIDER = 'geel';
 
 /**
+ * Session-ID remap table.
+ *
+ * geel-cli.js mints a random UUID for the frontend WS session before Claude
+ * CLI starts. Claude CLI then reports its own `session_id` on the final
+ * `result` frame. The UI navigates to `/session/<real>` after turn-done, so
+ * any realtime frame tagged with the minted UUID lands in an orphan store
+ * bucket that the rendered view never reads (P1-N2 Gate 1 item 4: CostChip
+ * never renders).
+ *
+ * Fix: on the first `result` of a session whose real ID differs from the
+ * minted one, emit a synthetic `session_created` frame (routed through the
+ * minted bucket so `useChatRealtimeHandlers.ts:227` picks it up and promotes
+ * currentSessionId + URL), then tag the cost `status` frame with the REAL
+ * sessionId so it lands in the bucket the navigated view will actually read.
+ * All subsequent frames in this session continue to ship under the real ID.
+ *
+ * Keyed by minted sessionId → { realId, migrated }. Bounded in practice by
+ * active WS sessions; entries grow with the process but are small.
+ */
+const sessionRemap = new Map();
+
+/**
  * Fetch persisted history.
  * Geel sessions live in the same JSONL files as Claude CLI sessions because
  * our ConductorSession.js spawns `claude -p --resume <id>` under the hood.
@@ -59,7 +81,9 @@ export async function fetchHistory(sessionId, opts = {}) {
  * @returns {import('../types.js').NormalizedMessage[]}
  */
 export function normalizeMessage(raw, sessionId) {
-  const base = { sessionId, provider: PROVIDER };
+  const remap = sessionRemap.get(sessionId);
+  const effectiveSid = remap?.realId || sessionId;
+  const base = { sessionId: effectiveSid, provider: PROVIDER };
   const ts = raw.ts ? new Date(raw.ts).toISOString() : new Date().toISOString();
 
   switch (raw.type) {
@@ -90,15 +114,46 @@ export function normalizeMessage(raw, sessionId) {
         ...base, timestamp: ts, kind: 'complete',
       })];
 
-    case 'result':
-      // Final result with cost, duration, and model info
+    case 'result': {
+      const realId = raw.sessionId;
+      const costText = `${raw.model || 'Claude'} · ${raw.duration ? `${raw.duration}ms` : ''} · $${raw.cost ? raw.cost.toFixed(4) : '0'}`;
+      const needsMigration = realId && realId !== sessionId && !remap?.migrated;
+
+      if (needsMigration) {
+        sessionRemap.set(sessionId, { realId, migrated: true });
+        return [
+          // Route migration frame through the MINTED bucket so the current
+          // view's realtime handler promotes currentSessionId → realId.
+          createNormalizedMessage({
+            sessionId,
+            provider: PROVIDER,
+            timestamp: ts,
+            kind: 'session_created',
+            newSessionId: realId,
+          }),
+          // Cost frame MUST land in the REAL bucket — that's where the
+          // post-navigation view will read from.
+          createNormalizedMessage({
+            sessionId: realId,
+            provider: PROVIDER,
+            timestamp: ts,
+            kind: 'status',
+            text: costText,
+            costUsd: raw.cost,
+            duration: raw.duration,
+            model: raw.model,
+          }),
+        ];
+      }
+
       return [createNormalizedMessage({
         ...base, timestamp: ts, kind: 'status',
-        text: `${raw.model || 'Claude'} · ${raw.duration ? `${raw.duration}ms` : ''} · $${raw.cost ? raw.cost.toFixed(4) : '0'}`,
+        text: costText,
         costUsd: raw.cost,
         duration: raw.duration,
         model: raw.model,
       })];
+    }
 
     case 'rate_limit':
       return [createNormalizedMessage({
@@ -119,11 +174,19 @@ export function normalizeMessage(raw, sessionId) {
         content: raw.content + (raw.reason ? ` [${raw.reason}]` : ''),
       })];
 
-    case 'session_init':
+    case 'session_init': {
+      const realId = raw.sessionId;
+      if (realId && realId !== sessionId && !remap?.migrated) {
+        sessionRemap.set(sessionId, { realId, migrated: true });
+      }
       return [createNormalizedMessage({
-        ...base, timestamp: ts, kind: 'session_created',
-        newSessionId: raw.sessionId,
+        sessionId, // keep minted here so the migration handler finds the old bucket
+        provider: PROVIDER,
+        timestamp: ts,
+        kind: 'session_created',
+        newSessionId: realId,
       })];
+    }
 
     default:
       return claudeAdapter.normalizeMessage(raw, sessionId)

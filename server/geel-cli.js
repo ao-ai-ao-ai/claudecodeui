@@ -91,8 +91,12 @@ export async function queryGeel(command, options = {}, writer) {
  */
 function openUpstream(url, sessionId, writer) {
   return new Promise((resolve, reject) => {
+    // Mutable — updated when Conductor assigns its real CLI session ID
+    // via session_init so subsequent messages (including result/CostChip)
+    // carry the correct session key.
+    let effectiveSessionId = sessionId;
     const upstream = new WebSocket(url);
-    const entry = { upstream, inflight: true };
+    const entry = { upstream, inflight: true, conductorSessionId: null };
 
     const timeout = setTimeout(() => {
       reject(new Error(`Conductor WS did not open within 10s: ${url}`));
@@ -103,7 +107,7 @@ function openUpstream(url, sessionId, writer) {
       clearTimeout(timeout);
       writer.send({
         id: `status_${Date.now()}`,
-        sessionId,
+        sessionId: effectiveSessionId,
         timestamp: new Date().toISOString(),
         provider: 'geel',
         kind: 'status',
@@ -117,7 +121,21 @@ function openUpstream(url, sessionId, writer) {
       try { parsed = JSON.parse(raw.toString()); }
       catch { return; }
 
-      const msgs = geelAdapter.normalizeMessage(parsed, sessionId);
+      // Conductor's session_init carries the real CLI session ID.
+      // Remap so all subsequent messages (including the result event
+      // that feeds CostChip) use the correct session key.
+      if (parsed.type === 'session_init' && parsed.sessionId) {
+        const oldId = effectiveSessionId;
+        effectiveSessionId = parsed.sessionId;
+        entry.conductorSessionId = parsed.sessionId;
+        if (oldId !== effectiveSessionId) {
+          activeSessions.delete(oldId);
+          activeSessions.set(effectiveSessionId, entry);
+          writer.setSessionId(effectiveSessionId);
+        }
+      }
+
+      const msgs = geelAdapter.normalizeMessage(parsed, effectiveSessionId);
       for (const m of msgs) writer.send(m);
 
       // Any message means upstream is alive — clear inflight gate

@@ -229,6 +229,7 @@ export function useChatRealtimeHandlers({
         if (!newSessionId) break;
 
         if (!currentSessionId || currentSessionId.startsWith('new-session-')) {
+          // Initial session creation (synthetic event from queryGeel)
           sessionStorage.setItem('pendingSessionId', newSessionId);
           if (pendingViewSessionRef.current && !pendingViewSessionRef.current.sessionId) {
             pendingViewSessionRef.current.sessionId = newSessionId;
@@ -238,6 +239,11 @@ export function useChatRealtimeHandlers({
           setPendingPermissionRequests((prev) =>
             prev.map((r) => (r.sessionId ? r : { ...r, sessionId: newSessionId })),
           );
+        } else if (currentSessionId !== newSessionId) {
+          // Session remap — Conductor assigned a different CLI session ID.
+          // Migrate store data so CostChip and all prior messages stay visible.
+          sessionStore.migrateSession(currentSessionId, newSessionId);
+          setCurrentSessionId(newSessionId);
         }
         onNavigateToSession?.(newSessionId);
         break;
