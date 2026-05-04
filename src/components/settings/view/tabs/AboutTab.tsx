@@ -1,4 +1,4 @@
-import { MessageSquare, Star } from 'lucide-react';
+import { MessageSquare, Star, ExternalLink } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useVersionCheck } from '../../../../hooks/useVersionCheck';
 

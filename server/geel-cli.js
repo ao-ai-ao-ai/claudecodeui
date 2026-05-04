@@ -121,20 +121,9 @@ function openUpstream(url, sessionId, writer) {
       try { parsed = JSON.parse(raw.toString()); }
       catch { return; }
 
-      // Conductor's session_init carries the real CLI session ID.
-      // Remap so all subsequent messages (including the result event
-      // that feeds CostChip) use the correct session key.
-      if (parsed.type === 'session_init' && parsed.sessionId) {
-        const oldId = effectiveSessionId;
-        effectiveSessionId = parsed.sessionId;
-        entry.conductorSessionId = parsed.sessionId;
-        if (oldId !== effectiveSessionId) {
-          activeSessions.delete(oldId);
-          activeSessions.set(effectiveSessionId, entry);
-          writer.setSessionId(effectiveSessionId);
-        }
-      }
-
+      // Session-ID remap is driven by the adapter's `result` handler —
+      // Conductor's session_init only carries {model, cwd, ts}. The CLI's
+      // real sessionId arrives on the final `result` frame.
       const msgs = geelAdapter.normalizeMessage(parsed, effectiveSessionId);
       for (const m of msgs) writer.send(m);
 

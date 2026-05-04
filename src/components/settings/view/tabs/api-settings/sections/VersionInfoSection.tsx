@@ -1,4 +1,4 @@
-import { Star, MessageSquare } from 'lucide-react';
+import { Star, MessageSquare, ExternalLink } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { ReleaseInfo } from '../../../../../../types/sharedTypes';
 

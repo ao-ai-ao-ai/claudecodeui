@@ -61,7 +61,7 @@ export function ActionBlock({
 
       {isExpanded && (
         <div className="mt-3 space-y-2">
-          {toolInput && (
+          {Boolean(toolInput) && (
             <div>
               <div className="text-xs font-medium text-gray-600 dark:text-gray-400">
                 Input
@@ -75,7 +75,7 @@ export function ActionBlock({
               </pre>
             </div>
           )}
-          {result && (
+          {Boolean(result) && (
             <div>
               <div className="text-xs font-medium text-gray-600 dark:text-gray-400">
                 Result
