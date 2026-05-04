@@ -14,12 +14,41 @@
 
 import WebSocket from 'ws';
 import { randomUUID } from 'node:crypto';
+import path from 'node:path';
+import os from 'node:os';
 import { geelAdapter } from './providers/geel/adapter.js';
 
 const NERVE_CENTER_WS =
   process.env.NERVE_CENTER_WS || 'ws://localhost:3333/ws/conductor';
 
 const ABORT_TIMEOUT_MS = 5000;
+
+// Conductor spawns `claude --dangerously-skip-permissions`. Any cwd we forward
+// becomes shell access in that directory. Allowlist project roots — siteboon
+// passes user-controlled `projectPath` from the WS message, so we validate
+// here in addition to nerve-center's upgrade-time check (defense in depth).
+const HOME = os.homedir();
+const ALLOWED_CWD_ROOTS = [
+  path.join(HOME, 'projects'),
+  path.join(HOME, 'ai-os'),
+  path.join(HOME, 'nerve-center'),
+];
+
+function safeProjectPath(p) {
+  if (!p || typeof p !== 'string') return null;
+  const resolved = path.resolve(p);
+  const ok = ALLOWED_CWD_ROOTS.some(
+    r => resolved === r || resolved.startsWith(r + path.sep)
+  );
+  return ok ? resolved : null;
+}
+
+function safeProjectSlug(s) {
+  if (!s || typeof s !== 'string') return null;
+  if (s.length === 0 || s.length >= 128) return null;
+  if (s.includes('/') || s.includes('..') || s.includes('\0')) return null;
+  return s;
+}
 
 /** sessionId (writer) → { upstream, inflight } */
 const activeSessions = new Map();
@@ -33,8 +62,27 @@ const activeSessions = new Map();
  * @param {object} writer  - WebSocketWriter instance (writer.send({...}))
  */
 export async function queryGeel(command, options = {}, writer) {
-  const slug = options.projectSlug
+  // Validate inputs against allowlist — siteboon's WS dispatcher passes user-
+  // supplied `data.options` through verbatim, so projectPath is attacker-
+  // controlled in the threat model. Reject anything outside the allowed roots
+  // before forwarding to Conductor.
+  const cwd = safeProjectPath(options.projectPath);
+  const rawSlug = options.projectSlug
     || (options.projectPath ? options.projectPath.split('/').pop() : null);
+  const slug = safeProjectSlug(rawSlug);
+
+  if (options.projectPath && !cwd) {
+    writer.send({
+      id: `err_${Date.now()}`,
+      sessionId: options.sessionId || 'pre-session',
+      timestamp: new Date().toISOString(),
+      provider: 'geel',
+      kind: 'error',
+      content: `projectPath outside allowed roots (${ALLOWED_CWD_ROOTS.join(', ')})`,
+    });
+    return;
+  }
+
   const freshSession = !options.sessionId;
   const sessionId = options.sessionId || randomUUID();
   writer.setSessionId(sessionId);
@@ -54,11 +102,6 @@ export async function queryGeel(command, options = {}, writer) {
     });
   }
 
-  // Prefer verbatim projectPath as cwd — siteboon's slug is the sanitized
-  // directory name (e.g. "-home-ubuntu-ai-os-projects-opulent-arrival"),
-  // not a usable slug. Nerve-center server.js:13781 honors `cwd` param
-  // override; fall back to projectSlug only when no path is given.
-  const cwd = options.projectPath || null;
   const qs = new URLSearchParams();
   if (cwd) qs.set('cwd', cwd);
   if (slug) qs.set('projectSlug', slug);
